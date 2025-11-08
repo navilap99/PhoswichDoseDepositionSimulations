@@ -1,4 +1,6 @@
-# Interactive mode
+# Macro file for the visualization setting in the initialization phase 
+# of the B1 example when running in interactive mode
+#
 
 # Specify a viewer, e.g., /vis/open OGL, or allow a system choice:
 /vis/open
@@ -73,16 +75,16 @@
 /vis/scene/endOfEventAction accumulate
 #
 # Axes, scale, etc.
-#/vis/scene/add/scale   # Simple scale line
-/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
+/vis/scene/add/scale   # Simple scale line
+/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue
 #
 # To get nice view
 # Make the "World" box invisible
 /vis/geometry/set/visibility World 0 false
-# Volumes
-#/vis/geometry/set/colour World 0 1 1 1 .1
+# "Plastic"
+/vis/geometry/set/colour World 0 1 1 1 .1
 /vis/geometry/set/colour Plastic 0 1 1 1 .1
-/vis/geometry/set/colour GAGG 0 1 1 0 .1
+/vis/geometry/set/colour GAGG 0 1 1 0 .3
 /vis/viewer/set/style surface
 /vis/viewer/set/hiddenMarker true
 /vis/viewer/set/viewpointThetaPhi 120 150

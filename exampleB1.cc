@@ -60,7 +60,7 @@ int main(int argc, char** argv){
     }
 
     // RunManager
-    auto runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default); //SerialOnly or Default
+    auto runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::SerialOnly); //SerialOnly or Default
 
     // DetectorConstruction
     auto detectorConstruction = new DetectorConstruction();
