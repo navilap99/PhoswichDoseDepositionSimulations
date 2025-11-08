@@ -158,4 +158,15 @@ namespace B1{
 
     }
 
+    void DetectorConstruction::SetPlasticDimensions(G4double diameter, G4double sizeZ) {
+        plasticDiameter = diameter;
+        plasticSizeZ = sizeZ;
+    }
+
+    void DetectorConstruction::SetGAAGDimensions(G4double sizeX, G4double sizeY, G4double sizeZ) {
+        gaggSizeX = sizeX;
+        gaggSizeY = sizeY;
+        gaggSizeZ = sizeZ;
+    }
+
 }

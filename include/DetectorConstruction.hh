@@ -25,6 +25,9 @@ namespace B1{
             G4LogicalVolume* GetScoringVolumePlastic() const { return fScoringVolumePlastic; }
             G4LogicalVolume* GetScoringVolumeGAGG() const { return fScoringVolumeGAGG; }
 
+            void SetPlasticDimensions(G4double diameter, G4double sizeZ);
+            void SetGAAGDimensions(G4double sizeX, G4double sizeY, G4double sizeZ);
+
         protected:
 
             G4LogicalVolume* fScoringVolumePlastic = nullptr;
