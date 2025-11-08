@@ -1,34 +1,7 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
 /// \file B1/src/RunAction.cc
 /// \brief Implementation of the B1::RunAction class
 
 #include "RunAction.hh"
-
 #include "DetectorConstruction.hh"
 #include "PrimaryGeneratorAction.hh"
 
@@ -41,108 +14,120 @@
 #include "G4SystemOfUnits.hh"
 #include "G4UnitsTable.hh"
 
-namespace B1
-{
+#include <filesystem>
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+namespace B1{
 
-RunAction::RunAction()
-{
-  // add new units for dose
-  //
-  const G4double milligray = 1.e-3 * gray;
-  const G4double microgray = 1.e-6 * gray;
-  const G4double nanogray = 1.e-9 * gray;
-  const G4double picogray = 1.e-12 * gray;
+    RunAction::RunAction(){
 
-  new G4UnitDefinition("milligray", "milliGy", "Dose", milligray);
-  new G4UnitDefinition("microgray", "microGy", "Dose", microgray);
-  new G4UnitDefinition("nanogray", "nanoGy", "Dose", nanogray);
-  new G4UnitDefinition("picogray", "picoGy", "Dose", picogray);
+        // Add new units for dose
+        const G4double milligray = 1.e-3 * gray;
+        const G4double microgray = 1.e-6 * gray;
+        const G4double nanogray = 1.e-9 * gray;
+        const G4double picogray = 1.e-12 * gray;
 
-  // Register accumulable to the accumulable manager
-  G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
-  accumulableManager->Register(fEdep);
-  accumulableManager->Register(fEdep2);
+        new G4UnitDefinition("milligray", "milliGy", "Dose", milligray);
+        new G4UnitDefinition("microgray", "microGy", "Dose", microgray);
+        new G4UnitDefinition("nanogray", "nanoGy", "Dose", nanogray);
+        new G4UnitDefinition("picogray", "picoGy", "Dose", picogray);
+
+        // Register accumulable to the accumulable manager
+        G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
+        accumulableManager->Register(fEDepGAGG);
+        accumulableManager->Register(fEDep2GAGG);
+        accumulableManager->Register(fEDepPlastic);
+        accumulableManager->Register(fEDep2Plastic);
+
+    }
+
+    void RunAction::BeginOfRunAction(const G4Run*){
+
+        // Inform the runManager to save random number seed
+        G4RunManager::GetRunManager()->SetRandomNumberStore(false);
+
+        // Reset accumulables to their initial values
+        G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
+        accumulableManager->Reset();
+
+    }
+
+    void RunAction::EndOfRunAction(const G4Run* run){
+
+        G4int nofEvents = run->GetNumberOfEvent();
+        if (nofEvents == 0) return;
+
+        // Merge accumulables
+        G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
+        accumulableManager->Merge();
+
+        if (IsMaster()) {
+
+            // Compute total energy deposit in a run and its variance
+            G4double eDepGAGG = fEDepGAGG.GetValue();
+            G4double eDep2GAGG = fEDep2GAGG.GetValue();
+            G4double eDepPlastic = fEDepPlastic.GetValue();
+            G4double eDep2Plastic = fEDep2Plastic.GetValue();
+
+            G4double rmsEDepPlastic = eDep2Plastic - eDepPlastic * eDepPlastic / (nofEvents + 0.);
+            if (rmsEDepPlastic > 0.)
+                rmsEDepPlastic = std::sqrt(rmsEDepPlastic);
+            else
+                rmsEDepPlastic = 0.;
+
+            G4double rmsEDepGAGG = eDep2GAGG - eDepGAGG * eDepGAGG / (nofEvents + 0.);
+            if (rmsEDepGAGG > 0.)
+                rmsEDepGAGG = std::sqrt(rmsEDepGAGG);
+            else
+                rmsEDepGAGG = 0.;
+
+            // Compute dose and its variance
+            const auto detConstruction = static_cast<const DetectorConstruction*>(
+                G4RunManager::GetRunManager()->GetUserDetectorConstruction()
+            );
+
+            G4double massGAGG = detConstruction->GetScoringVolumeGAGG()->GetMass();
+            G4double doseGAGG = eDepGAGG / massGAGG;
+            G4double rmsDoseGAGG = rmsEDepGAGG / massGAGG;
+
+            G4double massPlastic = detConstruction->GetScoringVolumePlastic()->GetMass();
+            massPlastic -= massGAGG;
+            G4double dosePlastic = eDepPlastic / massPlastic;
+            G4double rmsDosePlastic = rmsEDepPlastic / massPlastic;
+
+            // Print
+            G4cout
+            << "Deposited energy in GAGG: "
+            << G4BestUnit(eDepGAGG, "Energy") << " rms = " << G4BestUnit(rmsEDepGAGG, "Energy")
+            << G4endl
+            << "Cumulated dose in GAAG: "
+            << G4BestUnit(doseGAGG, "Dose") << " rms = " << G4BestUnit(rmsDoseGAGG, "Dose")
+            << G4endl
+            << "Deposited energy in plastic: "
+            << G4BestUnit(eDepPlastic, "Energy") << " rms = " << G4BestUnit(rmsEDepPlastic, "Energy")
+            << G4endl
+            << "Cumulated dose in plastic: "
+            << G4BestUnit(dosePlastic, "Dose") << " rms = " << G4BestUnit(rmsDosePlastic, "Dose")
+            << G4endl
+            << "------------------------------------------------------------"
+            << G4endl
+            << G4endl;
+
+        }
+
+    }
+
+    void RunAction::AddEDepGAGG(G4double eDep){
+
+        fEDepGAGG += eDep;
+        fEDep2GAGG += eDep * eDep;
+
+    }
+
+    void RunAction::AddEDepPlastic(G4double eDep){
+
+        fEDepPlastic += eDep;
+        fEDep2Plastic += eDep * eDep;
+
+    }
+
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void RunAction::BeginOfRunAction(const G4Run*)
-{
-  // inform the runManager to save random number seed
-  G4RunManager::GetRunManager()->SetRandomNumberStore(false);
-
-  // reset accumulables to their initial values
-  G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
-  accumulableManager->Reset();
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void RunAction::EndOfRunAction(const G4Run* run)
-{
-  G4int nofEvents = run->GetNumberOfEvent();
-  if (nofEvents == 0) return;
-
-  // Merge accumulables
-  G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
-  accumulableManager->Merge();
-
-  // Compute dose = total energy deposit in a run and its variance
-  //
-  G4double edep = fEdep.GetValue();
-  G4double edep2 = fEdep2.GetValue();
-
-  G4double rms = edep2 - edep * edep / nofEvents;
-  if (rms > 0.)
-    rms = std::sqrt(rms);
-  else
-    rms = 0.;
-
-  const auto detConstruction = static_cast<const DetectorConstruction*>(
-    G4RunManager::GetRunManager()->GetUserDetectorConstruction());
-  G4double mass = detConstruction->GetScoringVolume()->GetMass();
-  G4double dose = edep / mass;
-  G4double rmsDose = rms / mass;
-
-  // Run conditions
-  //  note: There is no primary generator action object for "master"
-  //        run manager for multi-threaded mode.
-  const auto generatorAction = static_cast<const PrimaryGeneratorAction*>(
-    G4RunManager::GetRunManager()->GetUserPrimaryGeneratorAction());
-  G4String runCondition;
-  if (generatorAction) {
-    const G4ParticleGun* particleGun = generatorAction->GetParticleGun();
-    runCondition += particleGun->GetParticleDefinition()->GetParticleName();
-    runCondition += " of ";
-    G4double particleEnergy = particleGun->GetParticleEnergy();
-    runCondition += G4BestUnit(particleEnergy, "Energy");
-  }
-
-  // Print
-  //
-  if (IsMaster()) {
-    G4cout << G4endl << "--------------------End of Global Run-----------------------";
-  }
-  else {
-    G4cout << G4endl << "--------------------End of Local Run------------------------";
-  }
-
-  G4cout << G4endl << " The run consists of " << nofEvents << " " << runCondition << G4endl
-         << " Cumulated dose per run, in scoring volume : " << G4BestUnit(dose, "Dose")
-         << " rms = " << G4BestUnit(rmsDose, "Dose") << G4endl
-         << "------------------------------------------------------------" << G4endl << G4endl;
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void RunAction::AddEdep(G4double edep)
-{
-  fEdep += edep;
-  fEdep2 += edep * edep;
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-}  // namespace B1

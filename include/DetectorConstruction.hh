@@ -1,29 +1,3 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
 /// \file B1/include/DetectorConstruction.hh
 /// \brief Definition of the B1::DetectorConstruction class
 
@@ -32,30 +6,38 @@
 
 #include "G4VUserDetectorConstruction.hh"
 
+#include "G4SystemOfUnits.hh"
+
 class G4VPhysicalVolume;
 class G4LogicalVolume;
 
-namespace B1
-{
+namespace B1{
 
-/// Detector construction class to define materials and geometry.
+    class DetectorConstruction : public G4VUserDetectorConstruction{
 
-class DetectorConstruction : public G4VUserDetectorConstruction
-{
-  public:
-    DetectorConstruction() = default;
-    ~DetectorConstruction() override = default;
+        public:
 
-    G4VPhysicalVolume* Construct() override;
+            DetectorConstruction() = default;
+            ~DetectorConstruction() override = default;
 
-    G4LogicalVolume* GetScoringVolume() const { return fScoringVolume; }
+            G4VPhysicalVolume* Construct() override;
 
-  protected:
-    G4LogicalVolume* fScoringVolume = nullptr;
-};
+            G4LogicalVolume* GetScoringVolumePlastic() const { return fScoringVolumePlastic; }
+            G4LogicalVolume* GetScoringVolumeGAGG() const { return fScoringVolumeGAGG; }
 
-}  // namespace B1
+        protected:
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+            G4LogicalVolume* fScoringVolumePlastic = nullptr;
+            G4LogicalVolume* fScoringVolumeGAGG = nullptr;
+
+            G4double gaggSizeX = 0.75 * cm;
+            G4double gaggSizeY = gaggSizeX;
+            G4double gaggSizeZ = 2.0 * cm;
+            G4double plasticDiameter = 2.1 * cm;
+            G4double plasticSizeZ = 2.0 * cm;
+
+    };
+
+}
 
 #endif
