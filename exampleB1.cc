@@ -22,6 +22,9 @@ using namespace B1;
 
 int main(int argc, char** argv){
 
+    // RunManager
+    G4RunManager* runManager = nullptr;
+
     // Geometry parameters
     G4double plasticDiameterInput = std::stod(argv[1]) * cm;
     G4double plasticSizeZInput = std::stod(argv[2]) * cm;
@@ -42,11 +45,14 @@ int main(int argc, char** argv){
     G4UIExecutive* ui = nullptr;
     if (argc == 6) {
 
+        runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::SerialOnly);
         ui = new G4UIExecutive(argc, argv);
 
     }
 
     else{
+
+        runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default);
 
         // Run parameters
         energyMin = std::stod(argv[6]) * MeV;
@@ -58,9 +64,6 @@ int main(int argc, char** argv){
         indexMax = std::log10(energyMax/MeV);
 
     }
-
-    // RunManager
-    auto runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::SerialOnly); //SerialOnly or Default
 
     // DetectorConstruction
     auto detectorConstruction = new DetectorConstruction();
