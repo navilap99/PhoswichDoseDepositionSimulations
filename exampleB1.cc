@@ -89,6 +89,51 @@ int main(int argc, char** argv){
     // Get the pointer to the User Interface manager
     auto UImanager = G4UImanager::GetUIpointer();
 
+    // **********
+    // Output file
+    // **********
+
+    // Geometry parameters
+    G4LogicalVolume* GAGGLV = detectorConstruction->GetScoringVolumeGAGG();
+    G4Box* GAGGSolid = dynamic_cast<G4Box*>(GAGGLV->GetSolid());
+    G4double gaggSizeX = (GAGGSolid->GetXHalfLength()) * 2.0;
+    G4double gaggSizeY = (GAGGSolid->GetYHalfLength()) * 2.0;
+    G4double gaggSizeZ = (GAGGSolid->GetZHalfLength()) * 2.0;
+    G4double gaggVolume = GAGGLV->GetSolid()->GetCubicVolume();
+    G4double gaggMass = GAGGLV->GetMass();
+    G4double gaggDensity = GAGGLV->GetMaterial()->GetDensity();
+
+    G4LogicalVolume* plasticLV = detectorConstruction->GetScoringVolumePlastic();
+    G4Tubs* plasticSolid = dynamic_cast<G4Tubs*>(plasticLV->GetSolid());
+    G4double plasticRadius = plasticSolid->GetOuterRadius();
+    G4double plasticSizeZ = (plasticSolid->GetZHalfLength()) * 2.0;
+    G4double plasticTotalVolume = plasticLV->GetSolid()->GetCubicVolume();
+    G4double plasticVolume = plasticTotalVolume - gaggVolume;
+    G4double plasticTotalMass = plasticLV->GetMass();
+    G4double plasticMass = plasticTotalMass - gaggMass;
+    G4double plasticDensity = plasticLV->GetMaterial()->GetDensity();
+
+    // Print parameters in output file
+    std::string filename = "output.txt";
+    std::ofstream outFile(filename);
+    if (outFile) {
+        std::cout << "File created successfully: " << filename << std::endl;
+
+        outFile << "nEvents = " << nEvents << "\n";
+        outFile << "GAAG:" << "\n";
+        outFile << "dx = " << G4BestUnit(gaggSizeX, "Length") << " dy = " << G4BestUnit(gaggSizeY, "Length") << " dz = " << G4BestUnit(gaggSizeZ, "Length") << "\n";
+        outFile << "Density = " << G4BestUnit(gaggDensity, "Volumic Mass") << " Volume = " << G4BestUnit(gaggVolume, "Volume") << " Mass = " << G4BestUnit(gaggMass, "Mass") << "\n";
+        outFile << "Plastic:" << "\n";
+        outFile << "r = " << G4BestUnit(plasticRadius, "Length") << " h = " << G4BestUnit(plasticSizeZ, "Length") << "\n";
+        outFile << "Density = " << G4BestUnit(plasticDensity, "Volumic Mass") << " Volume = " << G4BestUnit(plasticVolume, "Volume") << " Mass = " << G4BestUnit(plasticMass, "Mass") << "\n";
+        outFile << "photonEnergy / MeV" << "\t" << "eDepGAGG / GeV" << "\t" << "dEDepGAGG / GeV" << "\t" << "eDepPlastic / GeV" << "\t" << "dEDepPlastic / GeV" << "\t" << "doseGAGG / Gy" << "\t" << "dDoseGAGG / Gy" << "\t" << "dosePlastic / Gy" << "\t" << "dDosePlastic / Gy" << "\n";
+
+        outFile.close();
+    }
+    else {
+        std::cerr << "Failed to create the file: " << filename << std::endl;
+    }
+
     // Process macro or start UI session
     if (!ui) {
 
@@ -96,6 +141,13 @@ int main(int argc, char** argv){
         for (G4double index = indexMin; index <= (indexMax + energyStep); index += energyStep) {
 
             G4double energy = std::pow(10, index);
+
+            if (std::filesystem::exists(filename)) {
+                std::ofstream file;
+                file.open(filename, std::ios::app);
+                file << energy / MeV << "\t";
+                file.close();
+            }
 
             std::cout << energy << "\n";
             UImanager->ApplyCommand("/gun/particle gamma");

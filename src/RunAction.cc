@@ -94,6 +94,16 @@ namespace B1{
             G4double dosePlastic = eDepPlastic / massPlastic;
             G4double rmsDosePlastic = rmsEDepPlastic / massPlastic;
 
+            // Write output file
+            std::string filename = "output.txt";
+            if (std::filesystem::exists(filename)) {
+
+                std::ofstream file;
+                file.open(filename, std::ios::app);
+                file << eDepGAGG / GeV << "\t" << rmsEDepGAGG / GeV << "\t" << eDepPlastic / GeV << "\t" << rmsEDepPlastic / GeV << "\t" << doseGAGG / gray << "\t" << rmsDoseGAGG / gray << "\t" << dosePlastic / gray << "\t" << rmsDosePlastic / gray << "\n";
+                file.close();
+            }
+
             // Print
             G4cout
             << "Deposited energy in GAGG: "
